@@ -1,29 +1,62 @@
 import React from 'react';
-import { FaGithubAlt, FaPlus } from 'react-icons/fa';
-import { Container, Form, SubmitButton } from './styles';
+import { FaGithubAlt, FaPlus, FaSpinner } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
+
+import Container from '../../components/Container';
+import { Form, SubmitButton, List } from './styles';
 import api from '../../services/api';
 
 export default class Main extends React.Component {
+    // eslint-disable-next-line react/state-in-constructor
     state = {
         newRepo: '',
+        repositories: [],
+        loading: false,
     };
 
+    // carregar as dados do localstorage
+    componentDidMount() {
+        const repositories = localStorage.getItem('repositories');
+
+        if (repositories) {
+            this.setState({ repositories: JSON.parse(repositories) });
+        }
+    }
+
+    // carregar os dados do localstorage
+    componentDidUpdate(_, prevState) {
+        const { repositories } = this.state;
+        if (prevState.repositories !== repositories) {
+            localStorage.setItem('repositories', JSON.stringify(repositories));
+        }
+    }
+
     handleInputChange = e => {
-        this.setState({
-            newRepo: e.target.value,
-        });
+        this.setState({ newRepo: e.target.value });
     };
 
     handleSubmit = async e => {
         e.preventDefault();
-        const { newRepo } = this.state;
+
+        this.setState({ loading: true });
+
+        const { newRepo, repositories } = this.state;
+
         const response = await api.get(`/repos/${newRepo}`);
 
-        console.log(response.data);
+        const data = {
+            name: response.data.full_name,
+        };
+
+        this.setState({
+            repositories: [...repositories, data],
+            newRepo: '',
+            loading: false,
+        });
     };
 
     render() {
-        const { newRepo } = this.state;
+        const { newRepo, loading, repositories } = this.state;
         return (
             <Container>
                 <h1>
@@ -37,10 +70,29 @@ export default class Main extends React.Component {
                         value={newRepo}
                         onChange={this.handleInputChange}
                     />
-                    <SubmitButton disabled>
-                        <FaPlus color="#FFFF" size={14} />
+                    <SubmitButton loading={loading}>
+                        {loading ? (
+                            <FaSpinner color="#FFF" size={14} />
+                        ) : (
+                            <FaPlus color="#FFFF" size={14} />
+                        )}
                     </SubmitButton>
                 </Form>
+
+                <List>
+                    {repositories.map(repository => (
+                        <li key={repository.name}>
+                            <span>{repository.name}</span>
+                            <Link
+                                to={`/repository/${encodeURIComponent(
+                                    repository.name
+                                )}`}
+                            >
+                                Detalhes
+                            </Link>
+                        </li>
+                    ))}
+                </List>
             </Container>
         );
     }
